@@ -3,6 +3,8 @@ import board
 import busio
 import adafruit_bme280
 import json
+import requests
+
 from datetime import datetime
 
 # Set up I2C communication on Pi GPIO pins
@@ -17,12 +19,20 @@ temperature_f = round((temperature * 9 / 5) + 32, 1)     # °F
 humidity = round(bme280.humidity, 1)                    # %
 pressure = round(bme280.pressure, 1)                    # hPa
 
+# Get outside temperature
+
+location = 'Macon'
+WttrUrl = f'https://wttr.in/{location}?format=3'
+
+temperatureOutside = requests.get(WttrUrl)
+
 # Package the data
 data = {
     "temperature_c": temperature,
     "temperature_f": temperature_f,
     "humidity": humidity,
     "pressure_hpa": pressure,
+    "temperatureOutside": temperatureOutside,
     "timestamp": datetime.now().isoformat()
 }
 

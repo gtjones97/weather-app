@@ -3,5 +3,6 @@
   "temperature_f": 85.0,
   "humidity": 53.1,
   "pressure_hpa": 1012.6,
+  "temperatureOutside": 81,
   "timestamp": "2025-07-17T14:45:00"
 }

@@ -73,6 +73,7 @@ $temp_color = getTempColor($data['temperature_f']);
       .grid {
         display: flex;
         gap: 1rem;
+        min-width: 900px;
       }
     }
   </style>
@@ -83,7 +84,7 @@ $temp_color = getTempColor($data['temperature_f']);
   <div class="grid">
     <div class="card" style="background: <?= $temp_color ?>; color: #fff;">
       <div class="value"><?= $data['temperature_f'] ?>°F</div>
-      <div class="label">Temperature</div>
+      <div class="label">Indoor Temperature</div>
     </div>
 
     <div class="card">
@@ -94,6 +95,23 @@ $temp_color = getTempColor($data['temperature_f']);
     <div class="card">
       <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
       <div class="label">Pressure</div>
+    </div>
+  </div>
+
+  <div class="grid">
+  <div class="card">
+      <div class="value"><?= $data['temperatureOutside'] ?>°F</div>
+      <div class="label">Outdoor Temperature</div>
+    </div>
+
+    <div class="card">
+      <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
+      <div class="label">Pressure3</div>
+    </div>
+
+    <div class="card">
+      <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
+      <div class="label">Pressure4</div>
     </div>
   </div>
 
