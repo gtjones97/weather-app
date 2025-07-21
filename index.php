@@ -2,6 +2,16 @@
 $data = json_decode(file_get_contents('data.json'), true);
 var_dump($data);
 
+// Open-Meteo API call for daily precipitation probability
+$lat = "32.84";
+$lon = "-83.63";
+$rainfall_api = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=precipitation_probability_max&timezone=auto";
+$weather_response = file_get_contents($rainfall_api);
+$weather_data = json_decode($weather_response, true);
+$daily_rain_chance = $weather_data['daily']['precipitation_probability_max'][0] ?? 'N/A';
+
+var_dump($daily_rain_chance);
+
 function getTempColor($temp_f) {
     if ($temp_f <= 32) return '#003366';
     if ($temp_f <= 50) return '#336699';
@@ -105,8 +115,8 @@ $temp_color = getTempColor($data['temperature_f']);
     </div>
 
     <div class="card">
-      <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
-      <div class="label">Pressure3</div>
+      <div class="value"><?= $rainfall_api ?>%</div>
+      <div class="label">Max Rain Chance for Today</div>
     </div>
 
     <div class="card">
