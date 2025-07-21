@@ -5,12 +5,34 @@ var_dump($data);
 // Open-Meteo API call for daily precipitation probability
 $lat = "32.84";
 $lon = "-83.63";
-$rainfall_api = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=precipitation_probability_max&timezone=auto";
+// Open-Meteo API call for daily and hourly precipitation probability and precipitation
+$rainfall_api = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=precipitation_probability_max&hourly=precipitation_probability,precipitation&timezone=auto";
 $weather_response = file_get_contents($rainfall_api);
 $weather_data = json_decode($weather_response, true);
 $daily_rain_chance = $weather_data['daily']['precipitation_probability_max'][0] ?? 'N/A';
 
-var_dump($daily_rain_chance);
+// Parse hourly rain forecast for today
+$hourly_times = $weather_data['hourly']['time'] ?? [];
+$hourly_precip = $weather_data['hourly']['precipitation'] ?? [];
+$hourly_prob = $weather_data['hourly']['precipitation_probability'] ?? [];
+$today_date = date('Y-m-d');
+$rain_forecast_hours = [];
+for ($i = 0; $i < count($hourly_times); $i++) {
+    $time = $hourly_times[$i];
+    if (strpos($time, $today_date) === 0) {
+        $precip = $hourly_precip[$i] ?? 0;
+        $prob = $hourly_prob[$i] ?? 0;
+        if ($precip > 0.1 || $prob > 40) {
+            // Format hour as h AM/PM
+            $hour_fmt = date('g A', strtotime($time));
+            $rain_forecast_hours[] = [
+                'time' => $hour_fmt,
+                'precip' => $precip,
+                'prob' => $prob
+            ];
+        }
+    }
+}
 
 function getTempColor($temp_f) {
     if ($temp_f <= 32) return '#003366';
@@ -109,19 +131,38 @@ $temp_color = getTempColor($data['temperature_f']);
   </div>
 
   <div class="grid">
-  <div class="card">
+    <div class="card">
       <div class="value"><?= $data['temperatureOutside'] ?>°F</div>
       <div class="label">Outdoor Temperature</div>
     </div>
 
     <div class="card">
-      <div class="value"><?= $rainfall_api ?>%</div>
+      <div class="value"><?= $daily_rain_chance ?>%</div>
       <div class="label">Max Rain Chance for Today</div>
     </div>
 
     <div class="card">
       <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
       <div class="label">Pressure4</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label" style="font-weight: bold; margin-bottom: 0.5em;">Today's Rain Forecast by Hour</div>
+      <?php if (count($rain_forecast_hours) > 0): ?>
+        <ul style="list-style:none; padding:0; margin:0;">
+          <?php foreach ($rain_forecast_hours as $rf): ?>
+            <li>
+              <span style="font-weight:600;"><?= htmlspecialchars($rf['time']) ?></span>:
+              <?= number_format($rf['prob']) ?>% chance,
+              <?= number_format($rf['precip'], 2) ?> mm
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php else: ?>
+        <div>No significant rain expected today.</div>
+      <?php endif; ?>
     </div>
   </div>
 
