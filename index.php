@@ -1,15 +1,26 @@
 <?php
-$data = json_decode(file_get_contents('data.json'), true);
-var_dump($data);
+date_default_timezone_set('America/New_York');
 
-// Open-Meteo API call for daily precipitation probability
+$data = json_decode(file_get_contents('data.json'), true);
+
+// Open-Meteo API call for daily precipitation probability, sunrise, and sunset
 $lat = "32.84";
 $lon = "-83.63";
-// Open-Meteo API call for daily and hourly precipitation probability and precipitation
-$rainfall_api = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=precipitation_probability_max&hourly=precipitation_probability,precipitation&timezone=auto";
+// Add daily=sunrise,sunset,precipitation_probability_max to the API call
+$rainfall_api = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=precipitation_probability_max,sunrise,sunset&hourly=precipitation_probability,precipitation&timezone=America/New_York";
 $weather_response = file_get_contents($rainfall_api);
 $weather_data = json_decode($weather_response, true);
 $daily_rain_chance = $weather_data['daily']['precipitation_probability_max'][0] ?? 'N/A';
+
+// Parse sunrise and sunset for today
+$sunrise_time = null;
+$sunset_time = null;
+if (isset($weather_data['daily']['sunrise'][0])) {
+    $sunrise_time = date('g:i A', strtotime($weather_data['daily']['sunrise'][0]));
+}
+if (isset($weather_data['daily']['sunset'][0])) {
+    $sunset_time = date('g:i A', strtotime($weather_data['daily']['sunset'][0]));
+}
 
 // Parse hourly rain forecast for today
 $hourly_times = $weather_data['hourly']['time'] ?? [];
@@ -22,7 +33,7 @@ for ($i = 0; $i < count($hourly_times); $i++) {
     if (strpos($time, $today_date) === 0) {
         $precip = $hourly_precip[$i] ?? 0;
         $prob = $hourly_prob[$i] ?? 0;
-        if ($precip > 0.1 || $prob > 40) {
+        if ($precip > 0.1 || $prob > 15) {
             // Format hour as h AM/PM
             $hour_fmt = date('g A', strtotime($time));
             $rain_forecast_hours[] = [
@@ -45,6 +56,26 @@ function getTempColor($temp_f) {
 }
 
 $temp_color = getTempColor($data['temperature_f']);
+
+// Fetch current weather alerts from National Weather Service
+$alerts_api = "https://api.weather.gov/alerts/active?point=$lat,$lon";
+$alerts_response = @file_get_contents($alerts_api);
+$alert_event = null;
+$alert_headline = null;
+if ($alerts_response !== false) {
+    $alerts_data = json_decode($alerts_response, true);
+    if (!empty($alerts_data['features']) && is_array($alerts_data['features'])) {
+        $first_alert = $alerts_data['features'][0]['properties'] ?? null;
+        if ($first_alert) {
+            $alert_event = $first_alert['event'] ?? null;
+            $alert_headline = $first_alert['headline'] ?? null;
+        }
+    }
+}
+if (!$alert_event && !$alert_headline) {
+    $alert_event = "No active alerts.";
+    $alert_headline = "";
+}
 
 ?>
 
@@ -85,7 +116,7 @@ $temp_color = getTempColor($data['temperature_f']);
     }
 
     .value {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: 600;
       margin: 0.5rem 0;
     }
@@ -107,6 +138,30 @@ $temp_color = getTempColor($data['temperature_f']);
         gap: 1rem;
         min-width: 900px;
       }
+    }
+
+    .alert-card {
+      border: 2px solid #cc2222;
+      color: #cc2222;
+      max-width: 300px;
+      background: #fff0f0;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(204, 34, 34, 0.2);
+      padding: 1.5rem 2rem;
+      margin: 0.5rem;
+      text-align: center;
+    }
+
+    .alert-label {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .alert-headline {
+      font-weight: 600;
+      margin-top: 0.5rem;
+      font-size: 1rem;
     }
   </style>
 </head>
@@ -142,15 +197,22 @@ $temp_color = getTempColor($data['temperature_f']);
     </div>
 
     <div class="card">
-      <div class="value"><?= $data['pressure_hpa'] ?> hPa</div>
-      <div class="label">Pressure4</div>
+      <div class="value">
+        <?php if ($sunrise_time): ?>
+          🌅 <?= $sunrise_time ?><br>
+        <?php endif; ?>
+        <?php if ($sunset_time): ?>
+          🌇 <?= $sunset_time ?>
+        <?php endif; ?>
+      </div>
+      <div class="label"></div>
     </div>
   </div>
 
   <div class="grid">
-    <div class="card">
-      <div class="label" style="font-weight: bold; margin-bottom: 0.5em;">Today's Rain Forecast by Hour</div>
-      <?php if (count($rain_forecast_hours) > 0): ?>
+    <div class="card" style="min-width: 516px;">
+    <div class="label" style="margin-bottom: 0.5em;">Today's Expected Rain Hours</div>
+        <?php if (count($rain_forecast_hours) > 0): ?>
         <ul style="list-style:none; padding:0; margin:0;">
           <?php foreach ($rain_forecast_hours as $rf): ?>
             <li>
@@ -162,6 +224,14 @@ $temp_color = getTempColor($data['temperature_f']);
         </ul>
       <?php else: ?>
         <div>No significant rain expected today.</div>
+      <?php endif; ?>
+    </div>
+
+    <div class="<?= $alert_event !== 'No active alerts.' ? 'alert-card' : 'card' ?>">
+    <div class="alert-label">🚨 Weather Alerts</div>
+      <div class="alert-headline"><?= htmlspecialchars($alert_event) ?></div>
+      <?php if ($alert_headline): ?>
+        <div><?= htmlspecialchars($alert_headline) ?></div>
       <?php endif; ?>
     </div>
   </div>
